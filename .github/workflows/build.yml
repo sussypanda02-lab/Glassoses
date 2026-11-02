@@ -2,7 +2,9 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 permissions:
@@ -13,54 +15,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Find Gradle wrapper
+      - name: Check project
         run: |
+          echo "Checking Android project..."
           ls -la
-          find . -maxdepth 3 -name gradlew -o -name gradle-wrapper.properties
-          
-      - name: Build debug APK
+          find . -name gradlew
+
+      - name: Build APK
         run: |
-          if [ ! -f ./gradlew ]; then
-            echo "ERROR: Gradle wrapper is missing from the project root."
+          if [ -f ./gradlew ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleDebug --no-daemon --stacktrace
+          else
+            echo "Gradle wrapper not found in project root."
             exit 1
           fi
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: warn
-
-## Step 2: Save and build
-
-1. Scroll down.
-2. Tap **Commit changes**.
-3. Confirm the commit.
-4. Open the [Actions page](https://github.com/sussypanda02-lab/Glassoses/actions).
-5. Wait for the new build to finish.
-
-## Step 3: Download your APK
-
-If the build succeeds ✅:
-
-1. Open the completed run.
-2. Find **Artifacts**.
-3. Tap `app-debug-apk`.
-4. Extract the downloaded ZIP and install the APK.
-
-**Important:** This changes the Java version and improves error reporting, but the correct Gradle and Java versions depend on your project's configuration. If the build fails again, open the latest run and send me the first error above `BUILD FAILED`. We may need to inspect `app/build.gradle.kts` or `build.gradle.kts` to fix the actual incompatibility.
+          if-no-files-found: error
 
 

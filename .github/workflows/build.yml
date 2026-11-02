@@ -1,53 +1,66 @@
-name: Android Build Debug APK
+name: Build Android APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [main, master]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    name: Build & Assemble Debug APK
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Source Code
+      - name: Checkout source
         uses: actions/checkout@v4
-      - name: Set up JDK 21
+
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          validate-wrappers: false
-          gradle-version: '9.3.1'
-      - name: Accept Android SDK Licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses 2>/dev/null || true
-      - name: Ensure Debug Keystore Exists
+          java-version: '17'
+
+      - name: Find Gradle wrapper
         run: |
-          mkdir -p ~/.android
-          if [ ! -f ~/.android/debug.keystore ]; then
-            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          fi
-      - name: Prepare Gradle Wrapper
+          ls -la
+          find . -maxdepth 3 -name gradlew -o -name gradle-wrapper.properties
+          
+      - name: Build debug APK
         run: |
-          chmod +x gradlew || true
-          mkdir -p gradle/wrapper
-          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
-            gradle wrapper --gradle-version 9.3.1 || true
-            chmod +x gradlew || true
+          if [ ! -f ./gradlew ]; then
+            echo "ERROR: Gradle wrapper is missing from the project root."
+            exit 1
           fi
-      - name: Build Debug APK with Gradle
-        run: |
-          if [ -f "./gradlew" ] && [ -f "gradle/wrapper/gradle-wrapper.jar" ]; then
-            ./gradlew assembleDebug --no-daemon --stacktrace -Djava.awt.headless=true
-          else
-            gradle assembleDebug --no-daemon --stacktrace -Djava.awt.headless=true
-          fi
-      - name: Upload Debug APK Artifact
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: '**/build/outputs/apk/**/*.apk'
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: warn
+
+## Step 2: Save and build
+
+1. Scroll down.
+2. Tap **Commit changes**.
+3. Confirm the commit.
+4. Open the [Actions page](https://github.com/sussypanda02-lab/Glassoses/actions).
+5. Wait for the new build to finish.
+
+## Step 3: Download your APK
+
+If the build succeeds ✅:
+
+1. Open the completed run.
+2. Find **Artifacts**.
+3. Tap `app-debug-apk`.
+4. Extract the downloaded ZIP and install the APK.
+
+**Important:** This changes the Java version and improves error reporting, but the correct Gradle and Java versions depend on your project's configuration. If the build fails again, open the latest run and send me the first error above `BUILD FAILED`. We may need to inspect `app/build.gradle.kts` or `build.gradle.kts` to fix the actual incompatibility.
+
+
